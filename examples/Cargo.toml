@@ -1,5 +1,5 @@
 [workspace]
     members = [
-        "p00_window", "p01_basic_triangle", "testing",
+        "p00_window", "p01_basic_triangle", "p02_uniform_buffer", "testing",
     ]
     target-dir = "target"
