@@ -1,0 +1,5 @@
+[workspace]
+    members = [
+        "p00_window", "p01_basic_triangle", "testing",
+    ]
+    target-dir = "target"
