@@ -15,3 +15,5 @@ p12_multiple_shaders - Načítání a použití shaderů uložených ve formátu
 p13_post_processing - Post-processing základy techniky vykreslování do textury, základy víceprůchodového zpracování
 p14a_tessellation - p14b_tessellation - Úvod do práce s teselačními shadery, použití teselačních shaderů pro zvýšení detailů geometrie
 p15a_deferred_shading - p15b_deferred_shading - Rozdílné způsoby implementace techniky deferred shading, víceprůchodové zpracování
+
+https://theses.cz/id/il01k0/?zpet=%2Fvyhledavani%2F%3Fsearch%3DAPI%20Vulkan%26start%3D1;isshlret=API%3BVulkan%3B

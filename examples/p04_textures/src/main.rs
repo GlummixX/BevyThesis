@@ -1,4 +1,5 @@
 use bevy::{
+    input::mouse::MouseMotion,
     prelude::*,
     render::{
         settings::{Backends, RenderCreation, WgpuSettings},
@@ -39,7 +40,7 @@ fn setup(
 
     // Sphere
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(5., 5., 5.))),
+        Mesh3d(meshes.add(Cube::new(5.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
         Transform::from_xyz(0., 0., 0.),
     ));
