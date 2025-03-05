@@ -1,5 +1,4 @@
 use bevy::{
-    input::mouse::MouseMotion,
     prelude::*,
     render::{
         settings::{Backends, RenderCreation, WgpuSettings},
@@ -26,22 +25,34 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Create camera
-    commands.spawn((Camera3d::default(), Transform::from_xyz(-10., 10., 10.)));
+    commands.spawn((Camera3d::default(), Transform::from_xyz(0., 1., 20.)));
     // Create light
     commands.spawn((
         PointLight {
             shadows_enabled: true,
             ..default()
         },
-        Transform::from_xyz(25.0, 25.0, 25.0),
+        Transform::from_xyz(0., 1., 10.0),
     ));
+
+    // Load texture
+    let texture_handle = asset_server.load("earth.png");
+
+    // Assign the texture to the material
+    let material = materials.add(StandardMaterial {
+        base_color_texture: Some(texture_handle),
+        reflectance: 0.3,
+        perceptual_roughness: 0.8,
+        ..Default::default()
+    });
 
     // Sphere
     commands.spawn((
-        Mesh3d(meshes.add(Cube::new(5.))),
-        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Mesh3d(meshes.add(Sphere::new(5.))),
+        MeshMaterial3d(material),
         Transform::from_xyz(0., 0., 0.),
     ));
 }

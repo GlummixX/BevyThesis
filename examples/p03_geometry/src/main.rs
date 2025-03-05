@@ -27,17 +27,20 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Create camera
-    commands.spawn((Camera3d::default(), Transform::from_xyz(-10., 10., 10.)));
+    let mut tr = Transform::from_xyz(20., 20., 20.);
+    tr = tr.looking_at(Vec3::ZERO, Vec3::Y);
+    commands.spawn((Camera3d::default(), tr));
+
     // Create light
     commands.spawn((
         PointLight {
             shadows_enabled: true,
             ..default()
         },
-        Transform::from_xyz(25.0, 25.0, 25.0),
+        Transform::from_xyz(8.0, 16.0, 8.0),
     ));
 
-    // Sphere
+    // Box
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::new(5., 5., 5.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),

@@ -4,7 +4,7 @@ use bevy::{
     render::{
         settings::{Backends, RenderCreation, WgpuSettings},
         RenderPlugin,
-    },
+    }, window::PrimaryWindow,
 };
 
 fn main() {
@@ -27,48 +27,43 @@ fn camera_controller_system(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut mouse: EventReader<MouseMotion>,
+    primary_window: Query<&Window, With<PrimaryWindow>>,
 ) {
-    if let Ok(mut transform) = query.get_single_mut() {
-        let mut input = Vec3::ZERO;
-        if keyboard.pressed(KeyCode::KeyW) {
-            input.z -= time.delta_secs();
-        }
-        if keyboard.pressed(KeyCode::KeyS) {
-            input.z += time.delta_secs();
-        }
-        if keyboard.pressed(KeyCode::KeyA) {
-            input.x -= time.delta_secs();
-        }
-        if keyboard.pressed(KeyCode::KeyD) {
-            input.x += time.delta_secs();
-        }
-        if keyboard.pressed(KeyCode::Space) {
-            input.y += time.delta_secs();
-        }
-        if keyboard.pressed(KeyCode::KeyC) {
-            input.y += time.delta_secs();
-        }
-        if input != Vec3::ZERO {
-            let by = transform.rotation * input;
-            transform.translation += by;
-        }
-        for ev in mouse.read() {
-            let delta = ev.delta * 0.2;
-            // Yaw
-            let up = transform.rotation * Vec3::Y;
-            let yaw: Quat = Quat::from_axis_angle(up, -delta.x.to_radians());
-            // Pitch
-            let right = transform.rotation * Vec3::X;
-            let pitch_rotation = Quat::from_axis_angle(right, -delta.y.to_radians());
-            // Apply pitch with clamping to prevent flipping
-            let current_rotation = transform.rotation * pitch_rotation;
-            let current_pitch = current_rotation.to_euler(EulerRot::XYZ).0;
-            let clamped_pitch = current_pitch.clamp(-1.5708, 1.5708); // -90° to +90° in radians
+    if let Ok(window) = primary_window.get_single() {
+        if let Ok(mut transform) = query.get_single_mut() {
+            let mut input = Vec3::ZERO;
+            if keyboard.pressed(KeyCode::KeyW) {
+                input.z -= time.delta_secs();
+            }
+            if keyboard.pressed(KeyCode::KeyS) {
+                input.z += time.delta_secs();
+            }
+            if keyboard.pressed(KeyCode::KeyA) {
+                input.x -= time.delta_secs();
+            }
+            if keyboard.pressed(KeyCode::KeyD) {
+                input.x += time.delta_secs();
+            }
+            if keyboard.pressed(KeyCode::Space) {
+                input.y += time.delta_secs();
+            }
+            if keyboard.pressed(KeyCode::KeyC) {
+                input.y += time.delta_secs();
+            }
+            if input != Vec3::ZERO {
+                let by = transform.rotation * input;
+                transform.translation += by;
+            }
+            for ev in mouse.read() {
+                let (mut azim, mut zeni, _) = transform.rotation.to_euler(EulerRot::YXZ);
+                let win_size = window.width().min(window.height());
+                zeni -= (100. * ev.delta.y / win_size).to_radians();
+                azim -= (100. * ev.delta.x / win_size).to_radians();
+                zeni = zeni.clamp(-1.54, 1.54);
 
-            let current_rotation = transform.rotation * yaw;
-            let current_yaw = current_rotation.to_euler(EulerRot::XYZ).1;
-     
-            transform.rotation = Quat::from_euler(EulerRot::XYZ, clamped_pitch, current_yaw, 0.0);
+                transform.rotation =
+                    Quat::from_axis_angle(Vec3::Y, azim) * Quat::from_axis_angle(Vec3::X, zeni)
+            }      
         }
     }
 }
@@ -92,23 +87,30 @@ fn setup(
 
     // Sphere
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(5.))),
+        Mesh3d(meshes.add(Sphere::new(3.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
         Transform::from_xyz(0., 0., 0.),
     ));
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(5.))),
+        Mesh3d(meshes.add(Sphere::new(3.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
         Transform::from_xyz(10., 0., 0.),
     ));
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(5.))),
+        Mesh3d(meshes.add(Sphere::new(3.))),
         MeshMaterial3d(materials.add(Color::srgb(0.0, 1.0, 0.0))),
         Transform::from_xyz(0., 10., 0.),
     ));
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(5.))),
+        Mesh3d(meshes.add(Sphere::new(3.))),
         MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
         Transform::from_xyz(0., 0., 10.),
+    ));
+
+    // Box
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(5., 5., 5.))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_xyz(25., 25., 25.),
     ));
 }
