@@ -19,8 +19,15 @@ fn main() {
     app.add_plugins(DefaultPlugins.set(render_plugin));
     app.add_systems(Startup, setup);
     app.add_systems(Update, camera_controller_system);
+    app.add_systems(Update, esc_exit_system);
     app.add_systems(Update, sun_rotation_system);
     app.run();
+}
+
+fn esc_exit_system(mut exit_events: ResMut<Events<bevy::app::AppExit>>, keyboard: Res<ButtonInput<KeyCode>>){
+    if keyboard.pressed(KeyCode::Escape){
+        exit_events.send(bevy::app::AppExit::Success);
+    }
 }
 
 fn camera_controller_system(
