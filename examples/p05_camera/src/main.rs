@@ -19,6 +19,7 @@ fn main() {
     app.add_plugins(DefaultPlugins.set(render_plugin));
     app.add_systems(Startup, setup);
     app.add_systems(Update, camera_controller_system);
+    app.add_systems(Update, sun_rotation_system);
     app.run();
 }
 
@@ -51,7 +52,7 @@ fn camera_controller_system(
                 input.y += time.delta_secs();
             }
             if input != Vec3::ZERO {
-                let by = transform.rotation * input;
+                let by = transform.rotation * input * 5.;
                 transform.translation += by;
             }
             for ev in mouse.read() {
@@ -68,6 +69,12 @@ fn camera_controller_system(
     }
 }
 
+fn sun_rotation_system(mut sun: Query<&mut Transform, With<DirectionalLight>>){
+    if let Ok(mut transform) = sun.get_single_mut(){
+        transform.rotate_y(0.005);
+    }
+}
+
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
@@ -75,42 +82,64 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Create camera
-    commands.spawn((Camera3d::default(), Transform::from_xyz(-10., 10., 10.)));
+    commands.spawn((Camera3d::default(), Transform::from_xyz(0., 0., 20.)));
     // Create light
     commands.spawn((
-        PointLight {
-            shadows_enabled: true,
-            ..default()
+        DirectionalLight{
+            shadows_enabled:true,
+            illuminance: 1500.0,
+            ..Default::default()
         },
-        Transform::from_xyz(25.0, 25.0, 25.0),
+        Transform::from_xyz(25.0, 30.0, 35.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
-    // Sphere
+
+    //XYZ indicator
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(3.))),
+        Mesh3d(meshes.add(Sphere::new(1.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
         Transform::from_xyz(0., 0., 0.),
     ));
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(3.))),
+        Mesh3d(meshes.add(Sphere::new(1.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 0.0, 0.0))),
-        Transform::from_xyz(10., 0., 0.),
+        Transform::from_xyz(5., 0., 0.),
     ));
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(3.))),
+        Mesh3d(meshes.add(Cuboid::new(5.,0.25,0.25))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_xyz(2.5, 0., 0.),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(1.))),
         MeshMaterial3d(materials.add(Color::srgb(0.0, 1.0, 0.0))),
-        Transform::from_xyz(0., 10., 0.),
+        Transform::from_xyz(0., 5., 0.),
     ));
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(3.))),
+        Mesh3d(meshes.add(Cuboid::new(0.25,5.,0.25))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_xyz(0., 2.5, 0.),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(1.))),
         MeshMaterial3d(materials.add(Color::srgb(0.0, 0.0, 1.0))),
-        Transform::from_xyz(0., 0., 10.),
+        Transform::from_xyz(0., 0., 5.),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(0.25,0.25,5.))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_xyz(0., 0., 2.5),
     ));
 
-    // Box
+    // Boxes
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::new(5., 5., 5.))),
         MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
-        Transform::from_xyz(25., 25., 25.),
+        Transform::from_xyz(10., 10., -10.),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(2., 2., 2.))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_xyz(10., 12.5, -10.),
     ));
 }
