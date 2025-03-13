@@ -98,14 +98,10 @@ fn setup(
         Transform::from_xyz(25.0, 30.0, 35.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
-    /*commands.spawn(SceneRoot(asset_server.load(
-        GltfAssetLabel::Scene(0).from_asset("teapot.gltf"),
-    )));*/
-
     let mesh = Mesh3d(asset_server.load("teapot.obj"));
     commands.spawn((
         mesh,
         MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
-        Transform::from_xyz(20., 20., 20.).with_scale(Vec3::splat(0.2)),
+        Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(0.05)),
     ));
 }
