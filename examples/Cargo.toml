@@ -1,5 +1,5 @@
 [workspace]
     members = [
-        "p00_window", "p01_basic_triangle", "p02_uniform_buffer", "p03_geometry", "p04_textures", "p05_camera", "testing",
+        "p00_window", "p01_basic_triangle", "p02_uniform_buffer", "p03_geometry", "p04_textures", "p05_camera", "p06_obj", "testing",
     ]
     target-dir = "target"

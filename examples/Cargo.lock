@@ -895,6 +895,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_obj"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b4ab78247d8e47e43295fe971d10842d4fcbed89c36d6388755e69a37c8723d"
+dependencies = [
+ "bevy",
+ "serde",
+ "thiserror",
+ "tobj",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3453,6 +3465,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "p06_obj"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_obj",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4295,6 +4315,15 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tobj"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04aca6092e5978e708ee784e8ab9b5cf3cdb598b28f99a2f257446e7081a7025"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "toml_datetime"
