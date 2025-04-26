@@ -1,9 +1,21 @@
 use bevy::{
     prelude::*,
     render::{
-        camera::ClearColor, extract_resource::{ExtractResource, ExtractResourcePlugin}, gpu_readback::{Readback, ReadbackComplete}, render_asset::RenderAssets, render_graph::{GraphInput, Node, RenderGraph, RenderLabel}, render_resource::{
-            AsBindGroup, AsBindGroupError, BindGroup, BindGroupLayout, BindGroupLayoutEntry, BindingType, BufferDescriptor, BufferUsages, CachedComputePipelineId, ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache, ShaderStages
-        }, renderer::RenderDevice, settings::{Backends, RenderCreation, WgpuSettings}, storage::{GpuShaderStorageBuffer, ShaderStorageBuffer}, texture::{FallbackImage, GpuImage}, Render, RenderApp, RenderPlugin, RenderSet
+        camera::ClearColor,
+        extract_resource::{ExtractResource, ExtractResourcePlugin},
+        gpu_readback::{Readback, ReadbackComplete},
+        render_asset::RenderAssets,
+        render_graph::{GraphInput, Node, RenderGraph, RenderLabel},
+        render_resource::{
+            AsBindGroup, AsBindGroupError, BindGroup, BindGroupLayout, BindGroupLayoutEntry,
+            BindingType, BufferUsages, CachedComputePipelineId, ComputePassDescriptor,
+            ComputePipelineDescriptor, PipelineCache, ShaderStages,
+        },
+        renderer::RenderDevice,
+        settings::{Backends, RenderCreation, WgpuSettings},
+        storage::{GpuShaderStorageBuffer, ShaderStorageBuffer},
+        texture::{FallbackImage, GpuImage},
+        Render, RenderApp, RenderPlugin, RenderSet,
     },
     DefaultPlugins,
 };
@@ -33,7 +45,7 @@ fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) 
     let num = 100;
     let mut rng = rand::rng();
     let mut data: Vec<i32> = Vec::with_capacity(num);
-    for _ in 0..data.capacity(){
+    for _ in 0..data.capacity() {
         data.push(rng.random_range(-10..10));
     }
     let mut output = ShaderStorageBuffer::from(vec![0, 0, 0]);
@@ -41,17 +53,29 @@ fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) 
     let output_handle = buff.add(output);
 
     println!("==============================");
-    println!("Expected: sum:{} min:{} max:{}", data.iter().sum::<i32>(), data.iter().min().unwrap(), data.iter().max().unwrap());
+    println!(
+        "Expected: sum:{} min:{} max:{}",
+        data.iter().sum::<i32>(),
+        data.iter().min().unwrap(),
+        data.iter().max().unwrap()
+    );
 
-    commands.spawn(Readback::buffer(output_handle.clone()))
-        .observe(|trigger: Trigger<ReadbackComplete>, mut exit_events: ResMut<Events<bevy::app::AppExit>>| {
-            let contents: Vec<i32> = trigger.event().to_shader_type();
-            println!("Readback result: {:?}", contents);
-            if contents[0] != contents[1] && contents[1] != contents[2]{
-                println!("Result: sum:{} min:{} max:{}", contents[0], contents[1], contents[2]);
-                exit_events.send(AppExit::Success);
-            }
-        });
+    commands
+        .spawn(Readback::buffer(output_handle.clone()))
+        .observe(
+            |trigger: Trigger<ReadbackComplete>,
+             mut exit_events: ResMut<Events<bevy::app::AppExit>>| {
+                let contents: Vec<i32> = trigger.event().to_shader_type();
+                println!("Readback result: {:?}", contents);
+                if contents[0] != contents[1] && contents[1] != contents[2] {
+                    println!(
+                        "Result: sum:{} min:{} max:{}",
+                        contents[0], contents[1], contents[2]
+                    );
+                    exit_events.send(AppExit::Success);
+                }
+            },
+        );
 
     commands.insert_resource(ComputeBuffers {
         input: buff.add(data),
@@ -65,8 +89,7 @@ pub struct ComputeNode;
 pub struct ComputePlugin;
 
 impl Plugin for ComputePlugin {
-    fn build(&self, app: &mut App) {
-    }
+    fn build(&self, _app: &mut App) {}
 
     fn finish(&self, app: &mut App) {
         if let Some(app) = app.get_sub_app_mut(RenderApp) {
@@ -84,13 +107,12 @@ impl Plugin for ComputePlugin {
     }
 }
 
-
 #[derive(Resource, AsBindGroup, Debug, Clone, ExtractResource)]
 struct ComputeBuffers {
     #[storage(0, visibility(compute))]
     input: Handle<ShaderStorageBuffer>,
     #[storage(1, visibility(compute))]
-    output: Handle<ShaderStorageBuffer>
+    output: Handle<ShaderStorageBuffer>,
 }
 
 #[derive(Resource)]
@@ -182,7 +204,7 @@ impl FromWorld for ComputePipeline {
 
 pub struct DispatchCompute;
 
-impl Node for DispatchCompute { 
+impl Node for DispatchCompute {
     fn run(
         &self,
         _graph: &mut bevy::render::render_graph::RenderGraphContext,
@@ -202,7 +224,9 @@ impl Node for DispatchCompute {
                         label: Some("Compute Pass"),
                         ..Default::default()
                     });
-            if let Some(real_pipeline) = pipeline_cache.get_compute_pipeline(kernel_pipeline.compute_pipeline){
+            if let Some(real_pipeline) =
+                pipeline_cache.get_compute_pipeline(kernel_pipeline.compute_pipeline)
+            {
                 pass.set_pipeline(&real_pipeline);
                 pass.set_bind_group(0, &kernel_bind_group.0, &[]);
                 pass.dispatch_workgroups(256, 1, 1);
