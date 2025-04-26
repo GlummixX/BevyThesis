@@ -64,6 +64,7 @@ fn camera_controller_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut mouse: EventReader<MouseMotion>,
     primary_window: Query<&Window, With<PrimaryWindow>>,
+    mut materials: ResMut<Assets<PhongLight>>,
 ) {
     if let Ok(window) = primary_window.get_single() {
         if let Ok(mut transform) = query.get_single_mut() {
@@ -99,7 +100,10 @@ fn camera_controller_system(
 
                 transform.rotation =
                     Quat::from_axis_angle(Vec3::Y, azim) * Quat::from_axis_angle(Vec3::X, zeni)
-            }      
+            } 
+            for (_, material) in materials.iter_mut(){
+                material.camera_pos = transform.translation;
+            }     
         }
     }
 }
