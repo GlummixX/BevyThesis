@@ -3502,6 +3502,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "p10b_compute_shader"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bytemuck",
+ "rand 0.9.1",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
