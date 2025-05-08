@@ -1,8 +1,9 @@
 use bevy::{
     prelude::*,
     render::{
-        camera::ClearColor,
+        camera::{ClearColor, ScalingMode, Viewport},
         extract_resource::{ExtractResource, ExtractResourcePlugin},
+        mesh::VertexBufferLayout,
         render_asset::RenderAssets,
         render_graph::{GraphInput, Node, RenderGraph, RenderLabel},
         render_resource::{
@@ -10,9 +11,9 @@ use bevy::{
             BindingType, BlendState, CachedComputePipelineId, CachedRenderPipelineId,
             ColorTargetState, ColorWrites, ComputePassDescriptor, ComputePipelineDescriptor,
             FragmentState, FrontFace, LoadOp, MultisampleState, Operations, PipelineCache,
-            PolygonMode, PrimitiveState, PrimitiveTopology,
-            RenderPassColorAttachment, RenderPassDescriptor, RenderPipelineDescriptor,
-            ShaderStages, ShaderType, StoreOp, TextureFormat, VertexState,
+            PolygonMode, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment,
+            RenderPassDescriptor, RenderPipelineDescriptor, ShaderStages, ShaderType, StoreOp,
+            TextureFormat, VertexAttribute, VertexFormat, VertexState,
         },
         renderer::RenderDevice,
         settings::{Backends, RenderCreation, WgpuSettings},
@@ -24,7 +25,6 @@ use bevy::{
     DefaultPlugins,
 };
 
-use rand::prelude::*;
 use std::borrow::Cow;
 
 const PARTICLE_COUNT: usize = 100_000;
@@ -44,7 +44,6 @@ struct PushConstants {
     attr: [f32; 2],
     attr_strength: f32,
     delta_t: f32,
-    _pad: [f32; 4]
 }
 
 fn main() {
@@ -56,7 +55,7 @@ fn main() {
         ..default()
     };
     let mut app = App::new();
-    app.insert_resource(ClearColor(Color::BLACK));
+    app.insert_resource(ClearColor(Color::srgb(0.1, 0.2, 0.2)));
     app.add_plugins((DefaultPlugins.set(render_plugin), ComputePlugin));
     app.add_plugins(ExtractResourcePlugin::<ComputeBuffers>::default());
     app.add_systems(Startup, setup);
@@ -65,31 +64,38 @@ fn main() {
 
 fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) {
     // Generate random particle data
-    let input_data: Vec<VertexData> = (0..PARTICLE_COUNT)
-        .map(|_| VertexData {
-            pos: [
-                rand::random::<f32>() * 2.0 - 1.0, // x
-                rand::random::<f32>() * 2.0 - 1.0, // y
-            ],
-            vel: [0.0, 0.0], // velocity x, y
-        })
-        .collect();
+    let mut positions: Vec<Vec2> = Vec::with_capacity(PARTICLE_COUNT);
+    let mut velocities: Vec<Vec2> = Vec::with_capacity(PARTICLE_COUNT);
 
-    // Initialize uniform
-    let uniform = PushConstants {
-        attr: [0.0, 0.0],
-        attr_strength: 1.0,
-        delta_t: 0.0,
-        _pad: [0.0,0.0,0.0,0.0]
-    };
+    for _ in 0..PARTICLE_COUNT {
+        positions.push(Vec2::new(
+            rand::random::<f32>() * 2.0 - 1.0,
+            rand::random::<f32>() * 2.0 - 1.0,
+        ));
+        velocities.push(Vec2::ZERO);
+    }
 
     commands.insert_resource(ComputeBuffers {
-        vertices: buff.add(input_data),
-        push: uniform,
+        vertices: buff.add(positions),
+        velocities: buff.add(velocities),
+        uniform_data: Vec4::new(0., 0., 0., 0.),
     });
+    let mut proj = OrthographicProjection::default_2d();
+    proj.near = -1.;
+    proj.far = 1.;
+    proj.scale = 1.;
+    proj.scaling_mode = ScalingMode::WindowSize;
+    proj.viewport_origin = Vec2::ZERO;
 
     // Spawn camera
-    commands.spawn(Camera2d::default());
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 0,
+            ..default()
+        },
+        proj,
+    ));
 }
 
 #[derive(RenderLabel, Clone, Hash, Debug, PartialEq, Eq)]
@@ -100,49 +106,53 @@ pub struct ComputePlugin;
 impl Plugin for ComputePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, update_uniform);
-    }
 
-    fn finish(&self, app: &mut App) {
-        if let Some(app) = app.get_sub_app_mut(RenderApp) {
-            app.init_resource::<ComputePipeline>();
-            app.init_resource::<RenderPipeline>();
-            app.add_systems(
-                Render,
-                (
-                    prepare_buffers.in_set(RenderSet::Prepare),
-                    prepare_render_pipeline.in_set(RenderSet::Prepare),
-                ),
+        // We need to get the render app from the main app
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+
+        // Initialize resources
+        render_app
+            .init_resource::<ComputePipeline>()
+            .init_resource::<RenderPipeline>();
+
+        // Add systems
+        render_app.add_systems(
+            Render,
+            (
+                prepare_buffers.in_set(RenderSet::Prepare),
+                prepare_render_pipeline.in_set(RenderSet::Prepare),
+            ),
+        );
+
+        // Add render graph nodes and edges
+        render_app
+            .add_render_graph_node::<DispatchCompute>(bevy::render::graph::CameraDriverLabel, ComputeNode)
+            .add_render_graph_node::<DispatchRenderNode>(bevy::render::graph::CameraDriverLabel, RenderNodeLabel)
+            .add_render_graph_edges(
+                bevy::render::graph::CameraDriverLabel,
+                &[ComputeNode, RenderNodeLabel, bevy::render::graph::CameraDriverLabel],
             );
-
-            let mut render_graph = app.world_mut().get_resource_mut::<RenderGraph>().unwrap();
-            render_graph.add_node(ComputeNode, DispatchCompute {});
-            render_graph.add_node(RenderNodeLabel, RenderNode::default());
-
-            let r = render_graph.try_add_node_edge(GraphInput, ComputeNode);
-            if r.is_err() {
-                println!("{:?}", r);
-            }
-            let r = render_graph.try_add_node_edge(ComputeNode, RenderNodeLabel);
-            if r.is_err() {
-                println!("{:?}", r);
-            }
-        }
     }
 }
 
-fn update_uniform(
-    time: Res<Time>,
-    mut compute: ResMut<ComputeBuffers>,
-) {
-    compute.push.delta_t = time.delta_secs() as f32;
+fn update_uniform(time: Res<Time>, mut compute: ResMut<ComputeBuffers>) {
+    let elapsed = time.elapsed_secs();
+    compute.uniform_data.x = 0.8 * (2.8 * elapsed).sin();
+    compute.uniform_data.y = 0.5 * (0.8 * elapsed).cos();
+    compute.uniform_data.z = 0.4 * (2.0 * elapsed).cos();
+    compute.uniform_data.w = time.delta().as_secs_f32();
 }
 
 #[derive(Resource, AsBindGroup, Debug, Clone, ExtractResource)]
 struct ComputeBuffers {
     #[storage(0, visibility(compute))]
     vertices: Handle<ShaderStorageBuffer>,
-    #[uniform(1, visibility(compute))]
-    push: PushConstants,
+    #[storage(1, visibility(compute))]
+    velocities: Handle<ShaderStorageBuffer>,
+    #[uniform(2, visibility(compute))]
+    uniform_data: Vec4,
 }
 
 #[derive(Resource)]
@@ -197,12 +207,25 @@ impl FromWorld for ComputePipeline {
                     },
                     count: None,
                 },
-                // Uniform buffer
+                // Velocities buffer
                 BindGroupLayoutEntry {
                     binding: 1,
                     visibility: ShaderStages::COMPUTE,
                     ty: BindingType::Buffer {
-                        ty: bevy::render::render_resource::BufferBindingType::Uniform,
+                        ty: bevy::render::render_resource::BufferBindingType::Storage {
+                            read_only: false,
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // Uniform buffer
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: bevy::render::render_resource::BufferBindingType::Uniform {},
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -277,18 +300,42 @@ impl FromWorld for RenderPipeline {
         let render_device = world.resource::<RenderDevice>();
         let bind_group_layout = render_device.create_bind_group_layout(
             "RenderBuffers",
-            &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX,
-                ty: BindingType::Buffer {
-                    ty: bevy::render::render_resource::BufferBindingType::Storage {
-                        read_only: true,
+            &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: bevy::render::render_resource::BufferBindingType::Storage {
+                            read_only: true,
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                    count: None,
                 },
-                count: None,
-            }],
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: bevy::render::render_resource::BufferBindingType::Storage {
+                            read_only: true,
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: bevy::render::render_resource::BufferBindingType::Uniform {},
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
         );
 
         let shader = world.load_asset(SHADER_PATH_VERTEX);
@@ -308,26 +355,22 @@ impl FromWorld for RenderPipeline {
                 entry_point: "fs_main".into(),
                 shader_defs: vec![],
                 targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::Bgra8UnormSrgb,
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    format: TextureFormat::Rgba8UnormSrgb,
+                    blend: None,
                     write_mask: ColorWrites::ALL,
                 })],
             }),
             primitive: PrimitiveState {
-                topology: PrimitiveTopology::PointList,
+                topology: PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
-                front_face: FrontFace::Ccw,
+                front_face: FrontFace::Ccw, 
                 cull_mode: None,
                 unclipped_depth: false,
-                polygon_mode: PolygonMode::Fill,
+                polygon_mode: PolygonMode::Point,
                 conservative: false,
             },
             depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+            multisample: MultisampleState::default(),
             push_constant_ranges: vec![],
             zero_initialize_workgroup_memory: false,
         });
@@ -369,12 +412,12 @@ fn prepare_render_pipeline(
 #[derive(RenderLabel, Clone, Hash, Debug, PartialEq, Eq)]
 struct RenderNodeLabel;
 
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
-pub struct RenderNode {
+#[derive(Clone, Hash, Debug, PartialEq, Eq, Default)]
+pub struct DispatchRenderNode {
     view_target_id: Option<Entity>,
 }
 
-impl Node for RenderNode {
+impl Node for DispatchRenderNode {
     fn update(&mut self, world: &mut World) {
         if let Ok((entity, _)) = world.query::<(Entity, &ViewTarget)>().get_single(world) {
             self.view_target_id = Some(entity);
@@ -390,42 +433,32 @@ impl Node for RenderNode {
         let pipeline_cache = world.resource::<PipelineCache>();
         let render_pipeline = world.resource::<RenderPipeline>();
         let render_bind_group = world.resource::<RenderBindGroup>();
-
         if let (Some(pipeline), Some(entity)) = (
             pipeline_cache.get_render_pipeline(render_pipeline.pipeline),
             self.view_target_id,
         ) {
             if let Some(view) = world.entity(entity).get::<ViewTarget>() {
                 let mut render_pass =
-                    render_context.begin_tracked_render_pass(RenderPassDescriptor {
-                        label: Some("Particle Render Pass"),
-                        color_attachments: &[Some(RenderPassColorAttachment {
-                            view: &view.main_texture_view(),
-                            resolve_target: None,
-                            ops: Operations {
-                                load: LoadOp::Load,
-                                store: StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                    });
+                    render_context
+                        .command_encoder()
+                        .begin_render_pass(&RenderPassDescriptor {
+                            label: Some("Render Pass"),
+                            color_attachments: &[Some(RenderPassColorAttachment {
+                                view: &view.main_texture_view(),
+                                resolve_target: None,
+                                ops: Operations::default(),
+                            })],
+                            depth_stencil_attachment: None,
+                            occlusion_query_set: None,
+                            timestamp_writes: None,
+                        });
 
-                render_pass.set_render_pipeline(pipeline);
+                render_pass.set_pipeline(pipeline);
                 render_pass.set_bind_group(0, &render_bind_group.0, &[]);
                 render_pass.draw(0..PARTICLE_COUNT as u32, 0..1);
             }
         }
 
         Ok(())
-    }
-}
-
-impl Default for RenderNode {
-    fn default() -> Self {
-        Self {
-            view_target_id: None,
-        }
     }
 }

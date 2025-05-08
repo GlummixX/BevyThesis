@@ -1,19 +1,11 @@
-struct VertexData {
-    pos: vec2<f32>,
-    vel: vec2<f32>,
-};
-
-struct PushConstants {
-    attr: vec2<f32>,
-    attr_strength: f32,
-    delta_t: f32,
-};
-
 @group(0) @binding(0)
-var<storage, read_write> verticies: array<VertexData>;
+var<storage, read_write> vertices: array<vec2<f32>>;
 
 @group(0) @binding(1)
-var<uniform> push: PushConstants;
+var<storage, read_write> velocities: array<vec2<f32>>;
+
+@group(0) @binding(2)
+var<uniform> uniform_data: vec4<f32>;
 
 const maxSpeed: f32 = 10.0;
 const minLength: f32 = 0.1;
@@ -23,8 +15,8 @@ const friction: f32 = -1;
 fn main(@builtin(global_invocation_id) GlobalInvocationID: vec3<u32>) {
     let index: u32 = GlobalInvocationID.x;
 
-    var vel: vec2<f32> = verticies[index].vel;
-    var pos: vec2<f32> = verticies[index].pos + push.delta_t * vel;
+    var vel: vec2<f32> = velocities[index];
+    var pos: vec2<f32> = vertices[index] + uniform_data.z * vel;
 
     if (abs(pos.x) > 1.0) {
         vel.x = sign(pos.x) * (-0.95 * abs(vel.x) - 0.0001);
@@ -36,16 +28,16 @@ fn main(@builtin(global_invocation_id) GlobalInvocationID: vec3<u32>) {
         pos.y = clamp(pos.y, -1.0, 1.0);
     }
 
-    let t: vec2<f32> = push.attr - pos;
+    let t: vec2<f32> = uniform_data.xy - pos;
     let r: f32 = max(length(t), minLength);
-    let force: vec2<f32> = push.attr_strength * (t / r) / (r * r);
+    let force: vec2<f32> = uniform_data.w * (t / r) / (r * r);
 
-    vel = vel + push.delta_t * force;
+    vel = vel + uniform_data.z * force;
 
     if (length(vel) > maxSpeed) {
         vel = maxSpeed * normalize(vel);
     }
 
-    verticies[index].pos = pos;
-    verticies[index].vel = vel * exp(friction * push.delta_t);
+    vertices[index] = pos;
+    velocities[index] = vel * exp(friction * uniform_data.z);
 }
