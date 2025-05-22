@@ -15,12 +15,12 @@ struct Vertex {
 
 @vertex
 fn vertex(in: Vertex) -> VertexOutput {
-    var scaleFactor:f32 = sin(time) * 0.5 + 1.0;
-    var scaledPosition:vec3<f32> = vec3<f32>(in.position.xy, -1.0) * scaleFactor;
-    scaledPosition.y += sin(time + in.position.x) * 0.2;
+    var scale_factor: f32 = sin(time) * 0.5 + 1.0;
+    var scaled_pos: vec3<f32> = vec3<f32>(in.position.xy, -1.0) * scale_factor;
+    scaled_pos.y += sin(time + in.position.x) * 0.2;
 
     var out: VertexOutput;
-    out.position = mesh2d_position_local_to_clip(get_world_from_local(in.instance_index), vec4<f32>(scaledPosition, 1.0));
+    out.position = mesh2d_position_local_to_clip(get_world_from_local(in.instance_index), vec4<f32>(scaled_pos, 1.0));
     out.color = in.color * (0.5 + 0.5 * sin(time));
     return out;
 }

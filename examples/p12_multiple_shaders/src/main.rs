@@ -1,7 +1,15 @@
 use bevy::{
-    asset::RenderAssetUsages, pbr::{MaterialPipeline, MaterialPipelineKey}, prelude::*, render::{
-        mesh::{MeshVertexAttribute, MeshVertexBufferLayout, MeshVertexBufferLayoutRef}, render_resource::{AsBindGroup, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError, VertexFormat}, settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin
-    }, sprite::{Material2d, Material2dPlugin}, window::{PresentMode, WindowMode, WindowResolution}
+    asset::RenderAssetUsages,
+    prelude::*,
+    render::{
+        render_resource::{
+            AsBindGroup, ShaderRef
+        },
+        settings::{Backends, RenderCreation, WgpuSettings},
+        RenderPlugin,
+    },
+    sprite::{Material2d, Material2dPlugin},
+    window::{PresentMode, WindowMode, WindowResolution},
 };
 const SHADER_A: &str = "a.wgsl";
 const SHADER_B: &str = "b.wgsl";
@@ -17,9 +25,6 @@ impl Material2d for ShaderAMat {
     fn fragment_shader() -> ShaderRef {
         SHADER_A.into()
     }
-    /*fn vertex_shader() -> ShaderRef {
-        SHADER_A.into()
-    }*/
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone, Default)]
@@ -53,15 +58,16 @@ impl Material2d for ShaderCMat {
 }
 
 fn create_colored_triangle() -> Mesh {
-    let mut mesh = Mesh::new(bevy::render::render_resource::PrimitiveTopology::TriangleList, RenderAssetUsages::all());
-    
+    let mut mesh = Mesh::new(
+        bevy::render::render_resource::PrimitiveTopology::TriangleList,
+        RenderAssetUsages::all(),
+    );
+
     // Create triangle using Triangle2d
     let triangle = Triangle2d::new(Vec2::ZERO, Vec2::new(0.5, 1.), Vec2::new(1., 0.));
-    
+
     // Convert triangle vertices to Vec<[f32; 3]>
-    let positions: Vec<[f32; 3]> = triangle.vertices.iter()
-        .map(|v| [v.x, v.y, 0.0])
-        .collect();
+    let positions: Vec<[f32; 3]> = triangle.vertices.iter().map(|v| [v.x, v.y, 0.0]).collect();
     // Define colors for each vertex
     let colors = vec![
         [1.0, 0.0, 0.0, 1.0], // Red
@@ -72,7 +78,7 @@ fn create_colored_triangle() -> Mesh {
     // Set vertex attributes
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-    
+
     // Set indices for the triangle
     mesh.insert_indices(bevy::render::mesh::Indices::U32(vec![0, 1, 2]));
 
@@ -89,16 +95,13 @@ fn setup(
     // Create a 2D camera with orthographic projection
     let mut proj = OrthographicProjection::default_2d();
     proj.scale = 0.01;
-    commands.spawn((
-        Camera2d,
-        proj,
-    ));
+    commands.spawn((Camera2d, proj));
 
     // Init shader materials
     let material_a = shader_a.add(ShaderAMat::default());
     let material_b = shader_b.add(ShaderBMat::default());
     let material_c = shader_c.add(ShaderCMat::default());
-    
+
     // Create colored triangle mesh
     let mesh = create_colored_triangle();
 
@@ -169,6 +172,6 @@ fn main() {
         Material2dPlugin::<ShaderCMat>::default(),
     ));
     app.add_systems(Startup, setup);
-    app.add_systems(Update,time_system);
+    app.add_systems(Update, time_system);
     app.run();
 }
