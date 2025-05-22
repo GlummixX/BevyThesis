@@ -2,6 +2,7 @@
     members = [
         "p00_window", "p01_basic_triangle", "p02_uniform_buffer", "p03_geometry", "p04_textures", "p05_camera", "p06_obj",
         "p08_light", "p10a_compute_shader", "p10b_compute_shader",
+        "p12_multiple_shaders",
         "testing",
     ]
     target-dir = "target"
