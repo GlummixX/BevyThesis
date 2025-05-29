@@ -14,7 +14,7 @@ use bevy::{
         }, render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
             *,
-        }, renderer::{RenderContext, RenderDevice}, settings::{Backends, RenderCreation, WgpuSettings}, view::ViewTarget, RenderApp, RenderPlugin
+        }, renderer::{RenderContext, RenderDevice}, settings::{Backends, RenderCreation, WgpuSettings}, view::ViewTarget, MainWorld, RenderApp, RenderPlugin
     }, window::{PresentMode, WindowMode, WindowResolution},
 };
 
@@ -54,15 +54,27 @@ fn main() {
 /// It is generally encouraged to set up post processing effects as a plugin
 struct PostProcessPlugin;
 
+fn check_event(mut world: ResMut<MainWorld>, mut ppp: ResMut<PostProcessPipeline>) {
+    let mut events = world.get_resource_mut::<Events<SwitchShaderEvent>>().unwrap();
+    let event = !events.is_empty();
+    if event{
+        events.clear();
+        ppp.cycle_active();
+    };
+}
+
 impl Plugin for PostProcessPlugin {
     fn build(&self, app: &mut App) {
-
-        app.init_resource::<PipelineMode>();
-
+        app.add_event::<SwitchShaderEvent>();
+        app.add_systems(Update, shader_switcher);
+        
         // We need to get the render app from the main app
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
+
+
+        render_app.add_systems(ExtractSchedule, check_event);
 
         render_app
             // Bevy's renderer uses a render graph which is a collection of nodes in a directed acyclic graph.
@@ -146,10 +158,13 @@ impl ViewNode for PostProcessNode {
         // which is expensive due to shader compilation.
         let pipeline_cache = world.resource::<PipelineCache>();
 
-        let id = world.resource::<PipelineMode>();
+        let Some(pipeline_def) = post_process_pipeline.get_active()
+        else{
+            return Ok(());
+        };
 
         // Get the pipeline from the cache
-        let Some(pipeline) = pipeline_cache.get_render_pipeline(post_process_pipeline.pipeline_id)
+        let Some(pipeline) = pipeline_cache.get_render_pipeline(pipeline_def.pipeline_id)
         else {
             return Ok(());
         };
@@ -172,13 +187,13 @@ impl ViewNode for PostProcessNode {
         // is to make sure you get it during the node execution.
         let bind_group = render_context.render_device().create_bind_group(
             "post_process_bind_group",
-            &post_process_pipeline.layout,
+            &pipeline_def.layout,
             // It's important for this to match the BindGroupLayout defined in the PostProcessPipeline
             &BindGroupEntries::sequential((
                 // Make sure to use the source view
                 post_process.source,
                 // Use the sampler created for the pipeline
-                &post_process_pipeline.sampler,
+                &pipeline_def.sampler,
             )),
         );
 
@@ -208,15 +223,43 @@ impl ViewNode for PostProcessNode {
 }
 
 // This contains global data used by the render pipeline. This will be created once on startup.
-#[derive(Resource)]
-struct PostProcessPipeline {
+struct PipelineDef{
     layout: BindGroupLayout,
     sampler: Sampler,
     pipeline_id: CachedRenderPipelineId,
 }
 
+#[derive(Resource)]
+struct PostProcessPipeline {
+    defs: Vec<PipelineDef>,
+    active: usize,
+}
+
 impl FromWorld for PostProcessPipeline {
     fn from_world(world: &mut World) -> Self {
+        let mut defs: Vec<PipelineDef> = Vec::new();
+
+        defs.push(Self::add_pipeline(world, SCANLINE_SHADER.to_owned()));
+        defs.push(Self::add_pipeline(world, SEPIA_SHADER.to_owned()));
+        defs.push(Self::add_pipeline(world, EDGE_SHADER.to_owned()));
+
+        Self { defs, active: 0 }
+    }
+}
+
+impl PostProcessPipeline{
+    fn get_active(&self)->Option<&PipelineDef>{
+        self.defs.get(self.active)
+    }
+    fn cycle_active(&mut self){
+        self.active+=1;
+        if self.active >= self.defs.len(){
+            self.active = 0;
+        }
+        println!("{}", self.active);
+    }
+
+    fn add_pipeline(world: &mut World, shader: String) -> PipelineDef {
         let render_device = world.resource::<RenderDevice>();
 
         // We need to define the bind group layout used for our pipeline
@@ -238,7 +281,7 @@ impl FromWorld for PostProcessPipeline {
         let sampler = render_device.create_sampler(&SamplerDescriptor::default());
 
         // Get the shader handle
-        let shader = world.load_asset(SCANLINE_SHADER);
+        let shader = world.load_asset(shader);
 
         let pipeline_id = world
             .resource_mut::<PipelineCache>()
@@ -269,7 +312,7 @@ impl FromWorld for PostProcessPipeline {
                 zero_initialize_workgroup_memory: false,
             });
 
-        Self {
+        PipelineDef{
             layout,
             sampler,
             pipeline_id,
@@ -314,5 +357,14 @@ fn rotate(time: Res<Time>, mut query: Query<&mut Transform, With<Rotates>>) {
     }
 }
 
-#[derive(Resource, Default)]
-struct PipelineMode(u32);
+#[derive(Event)]
+struct SwitchShaderEvent;
+
+fn shader_switcher(
+    mut events: EventWriter<SwitchShaderEvent>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard.just_pressed(KeyCode::Space) {
+        events.send(SwitchShaderEvent);
+    }
+}
