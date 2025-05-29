@@ -1492,6 +1492,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "camera_plugin"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3522,6 +3529,7 @@ name = "p13_post_processing"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "camera_plugin",
 ]
 
 [[package]]
