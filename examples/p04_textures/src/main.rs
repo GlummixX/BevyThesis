@@ -5,7 +5,7 @@ use bevy::{prelude::*, render::{
 };
 
 #[derive(Component)]
-struct Rotuj{}
+struct Rotate{}
 
 fn main() {
     let render_plugin = RenderPlugin {
@@ -23,7 +23,7 @@ fn main() {
 
 }
 
-fn rotate_system(mut query: Query<&mut Transform, With<Rotuj>>){
+fn rotate_system(mut query: Query<&mut Transform, With<Rotate>>){
     for mut transform in query.iter_mut(){
         transform.rotate_local_y(0.1);
     }

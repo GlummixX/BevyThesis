@@ -1,11 +1,10 @@
 use bevy::{
-    prelude::*,
-    render::{
+    core_pipeline::core_2d::graph::{Core2d, Node2d}, prelude::*, render::{
         camera::{ClearColor, ScalingMode, Viewport},
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         mesh::VertexBufferLayout,
         render_asset::RenderAssets,
-        render_graph::{GraphInput, Node, RenderGraph, RenderLabel},
+        render_graph::{GraphInput, Node, RenderGraph, RenderGraphApp, RenderLabel},
         render_resource::{
             AsBindGroup, AsBindGroupError, BindGroup, BindGroupLayout, BindGroupLayoutEntry,
             BindingType, BlendState, CachedComputePipelineId, CachedRenderPipelineId,
@@ -21,8 +20,7 @@ use bevy::{
         texture::{FallbackImage, GpuImage},
         view::ViewTarget,
         Render, RenderApp, RenderPlugin, RenderSet,
-    },
-    DefaultPlugins,
+    }, DefaultPlugins
 };
 
 use std::borrow::Cow;
@@ -99,7 +97,7 @@ fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) 
 }
 
 #[derive(RenderLabel, Clone, Hash, Debug, PartialEq, Eq)]
-pub struct ComputeNode;
+pub struct ComputeNodeLabel;
 
 pub struct ComputePlugin;
 
@@ -112,11 +110,6 @@ impl Plugin for ComputePlugin {
             return;
         };
 
-        // Initialize resources
-        render_app
-            .init_resource::<ComputePipeline>()
-            .init_resource::<RenderPipeline>();
-
         // Add systems
         render_app.add_systems(
             Render,
@@ -128,12 +121,21 @@ impl Plugin for ComputePlugin {
 
         // Add render graph nodes and edges
         render_app
-            .add_render_graph_node::<DispatchCompute>(bevy::render::graph::CameraDriverLabel, ComputeNode)
-            .add_render_graph_node::<DispatchRenderNode>(bevy::render::graph::CameraDriverLabel, RenderNodeLabel)
-            .add_render_graph_edges(
-                bevy::render::graph::CameraDriverLabel,
-                &[ComputeNode, RenderNodeLabel, bevy::render::graph::CameraDriverLabel],
-            );
+            .add_render_graph_node::<ComputeNode>(Core2d, ComputeNodeLabel)
+            .add_render_graph_node::<RenderNode>(Core2d, RenderNodeLabel);
+
+        render_app.add_render_graph_edges(Core2d, (ComputeNodeLabel, RenderNodeLabel, Node2d::EndMainPass));
+    }
+
+    fn finish(&self, app: &mut App) {
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+
+        render_app
+            .init_resource::<ComputePipeline>()
+            .init_resource::<RenderPipeline>();
+
     }
 }
 
@@ -254,9 +256,10 @@ impl FromWorld for ComputePipeline {
     }
 }
 
-struct DispatchCompute;
+#[derive(Default)]
+struct ComputeNode;
 
-impl Node for DispatchCompute {
+impl Node for ComputeNode {
     fn run(
         &self,
         _graph: &mut bevy::render::render_graph::RenderGraphContext,
@@ -408,16 +411,15 @@ fn prepare_render_pipeline(
         }
     }
 }
-
 #[derive(RenderLabel, Clone, Hash, Debug, PartialEq, Eq)]
 struct RenderNodeLabel;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq, Default)]
-pub struct DispatchRenderNode {
+pub struct RenderNode {
     view_target_id: Option<Entity>,
 }
 
-impl Node for DispatchRenderNode {
+impl Node for RenderNode {
     fn update(&mut self, world: &mut World) {
         if let Ok((entity, _)) = world.query::<(Entity, &ViewTarget)>().get_single(world) {
             self.view_target_id = Some(entity);
@@ -462,3 +464,4 @@ impl Node for DispatchRenderNode {
         Ok(())
     }
 }
+
