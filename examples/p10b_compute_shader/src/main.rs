@@ -1,10 +1,10 @@
 use bevy::{
-    core_pipeline::core_2d::graph::{Core2d, Node2d}, prelude::*, render::{
+    core_pipeline::core_2d::graph::{Core2d, Node2d}, ecs::query::QueryItem, prelude::*, render::{
         camera::{ClearColor, ScalingMode, Viewport},
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         mesh::VertexBufferLayout,
         render_asset::RenderAssets,
-        render_graph::{GraphInput, Node, RenderGraph, RenderGraphApp, RenderLabel},
+        render_graph::{GraphInput, Node, RenderGraph, RenderGraphApp, RenderLabel, ViewNode, ViewNodeRunner},
         render_resource::{
             AsBindGroup, AsBindGroupError, BindGroup, BindGroupLayout, BindGroupLayoutEntry,
             BindingType, BlendState, CachedComputePipelineId, CachedRenderPipelineId,
@@ -79,11 +79,6 @@ fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) 
         uniform_data: Vec4::new(0., 0., 0., 0.),
     });
     let mut proj = OrthographicProjection::default_2d();
-    proj.near = -1.;
-    proj.far = 1.;
-    proj.scale = 1.;
-    proj.scaling_mode = ScalingMode::WindowSize;
-    proj.viewport_origin = Vec2::ZERO;
 
     // Spawn camera
     commands.spawn((
@@ -122,9 +117,9 @@ impl Plugin for ComputePlugin {
         // Add render graph nodes and edges
         render_app
             .add_render_graph_node::<ComputeNode>(Core2d, ComputeNodeLabel)
-            .add_render_graph_node::<RenderNode>(Core2d, RenderNodeLabel);
+            .add_render_graph_node::<ViewNodeRunner<RenderNode>>(Core2d, RenderNodeLabel);
 
-        render_app.add_render_graph_edges(Core2d, (ComputeNodeLabel, RenderNodeLabel, Node2d::EndMainPass));
+        render_app.add_render_graph_edges(Core2d, (ComputeNodeLabel, RenderNodeLabel, Node2d::EndMainPassPostProcessing));
     }
 
     fn finish(&self, app: &mut App) {
@@ -364,7 +359,7 @@ impl FromWorld for RenderPipeline {
                 })],
             }),
             primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleStrip,
+                topology: PrimitiveTopology::PointList,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw, 
                 cull_mode: None,
@@ -419,7 +414,8 @@ pub struct RenderNode {
     view_target_id: Option<Entity>,
 }
 
-impl Node for RenderNode {
+impl ViewNode for RenderNode {
+    type ViewQuery = &'static ViewTarget;
     fn update(&mut self, world: &mut World) {
         if let Ok((entity, _)) = world.query::<(Entity, &ViewTarget)>().get_single(world) {
             self.view_target_id = Some(entity);
@@ -430,35 +426,33 @@ impl Node for RenderNode {
         &self,
         _graph: &mut bevy::render::render_graph::RenderGraphContext,
         render_context: &mut bevy::render::renderer::RenderContext,
+        view_target: QueryItem<Self::ViewQuery>,
         world: &bevy::prelude::World,
     ) -> Result<(), bevy::render::render_graph::NodeRunError> {
         let pipeline_cache = world.resource::<PipelineCache>();
         let render_pipeline = world.resource::<RenderPipeline>();
         let render_bind_group = world.resource::<RenderBindGroup>();
+
         if let (Some(pipeline), Some(entity)) = (
             pipeline_cache.get_render_pipeline(render_pipeline.pipeline),
             self.view_target_id,
         ) {
-            if let Some(view) = world.entity(entity).get::<ViewTarget>() {
-                let mut render_pass =
-                    render_context
-                        .command_encoder()
-                        .begin_render_pass(&RenderPassDescriptor {
-                            label: Some("Render Pass"),
-                            color_attachments: &[Some(RenderPassColorAttachment {
-                                view: &view.main_texture_view(),
-                                resolve_target: None,
-                                ops: Operations::default(),
-                            })],
-                            depth_stencil_attachment: None,
-                            occlusion_query_set: None,
-                            timestamp_writes: None,
-                        });
+            let mut render_pass =
+                render_context.begin_tracked_render_pass(RenderPassDescriptor {
+                        label: Some("Render Pass"),
+                        color_attachments: &[Some(RenderPassColorAttachment {
+                            view: &view_target.main_texture_view(),
+                            resolve_target: None,
+                            ops: Operations::default(),
+                        })],
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
 
-                render_pass.set_pipeline(pipeline);
-                render_pass.set_bind_group(0, &render_bind_group.0, &[]);
-                render_pass.draw(0..PARTICLE_COUNT as u32, 0..1);
-            }
+            render_pass.set_render_pipeline(pipeline);
+            render_pass.set_bind_group(0, &render_bind_group.0, &[]);
+            render_pass.draw(0..PARTICLE_COUNT as u32, 0..10);
         }
 
         Ok(())

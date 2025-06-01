@@ -15,7 +15,8 @@ struct VertexOutput {
 fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     // Debug: Always output red color and center position
     var output: VertexOutput;
-    output.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);  // Center of screen
+    var pos: vec2<f32> = vertices[vertexIndex];
+    output.position = vec4<f32>(pos.x, pos.y, 0.0, 1.0);  // Center of screen
     output.color = vec4<f32>(1.0, 0.0, 0.0, 1.0);     // Red
     return output;
 }
