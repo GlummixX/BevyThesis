@@ -15,21 +15,38 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 
-const SHADER_FILE: &str = "../src/shader.wgsl";
+const SHADER_FILE: &str = "shader.wgsl";
 
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-struct CustomMaterial {
-    #[uniform(0)]
-    color_mul: LinearRgba,
+fn main() {
+    // Set the window properties
+    let window_settings = Window {
+        resolution: WindowResolution::new(800.0, 600.0),
+        title: "P01 Basic triangle".to_string(),
+        mode: WindowMode::Windowed,
+        present_mode: PresentMode::AutoVsync,
+        ..default()
+    };
+    let window_plugin = WindowPlugin {
+        primary_window: Some(window_settings),
+        ..default()
+    };
+    // Set the rendering backend
+    let render_plugin = RenderPlugin {
+        render_creation: RenderCreation::Automatic(WgpuSettings {
+            backends: Some(Backends::GL),
+            ..default()
+        }),
+        ..default()
+    };
+    // Create the app
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(window_plugin).set(render_plugin));
+    app.add_plugins(Material2dPlugin::<CustomMaterial>::default());
+    app.add_plugins(EguiPlugin);
+    app.add_systems(Startup, setup);
+    app.add_systems(Update, ui_example_system);
+    app.run();
 }
-
-impl Material2d for CustomMaterial {
-    fn fragment_shader() -> ShaderRef {
-        SHADER_FILE.into()
-    }
-}
-#[derive(Resource)]
-struct MaterialReference(Handle<CustomMaterial>);
 
 fn setup(
     mut commands: Commands,
@@ -72,6 +89,19 @@ fn setup(
     commands.insert_resource(reference);
 }
 
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+struct CustomMaterial {
+    #[uniform(0)]
+    color_mul: LinearRgba,
+}
+impl Material2d for CustomMaterial {
+    fn fragment_shader() -> ShaderRef {
+        SHADER_FILE.into()
+    }
+}
+#[derive(Resource)]
+struct MaterialReference(Handle<CustomMaterial>);
+
 fn ui_example_system(
     mut contexts: EguiContexts,
     mat_ref: Res<MaterialReference>,
@@ -97,35 +127,4 @@ fn ui_example_system(
         });
         material.color_mul = LinearRgba::new(red, green, blue, 1.0);
     }
-}
-
-fn main() {
-    // Set the window properties
-    let window_settings = Window {
-        resolution: WindowResolution::new(800.0, 600.0),
-        title: "P01 Basic triangle".to_string(),
-        mode: WindowMode::Windowed,
-        present_mode: PresentMode::AutoVsync,
-        ..default()
-    };
-    let window_plugin = WindowPlugin {
-        primary_window: Some(window_settings),
-        ..default()
-    };
-    // Set the rendering backend
-    let render_plugin = RenderPlugin {
-        render_creation: RenderCreation::Automatic(WgpuSettings {
-            backends: Some(Backends::GL),
-            ..default()
-        }),
-        ..default()
-    };
-    // Create the app
-    let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(window_plugin).set(render_plugin));
-    app.add_plugins(Material2dPlugin::<CustomMaterial>::default());
-    app.add_plugins(EguiPlugin);
-    app.add_systems(Startup, setup);
-    app.add_systems(Update, ui_example_system);
-    app.run();
 }

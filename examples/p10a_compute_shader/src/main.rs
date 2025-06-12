@@ -23,7 +23,7 @@ use bevy::{
 use rand::prelude::*;
 use std::borrow::Cow;
 
-const SHADER_ASSET_PATH: &str = "../src/shader.wgsl";
+const SHADER_ASSET_PATH: &str = "shader.wgsl";
 
 fn main() {
     let render_plugin = RenderPlugin {

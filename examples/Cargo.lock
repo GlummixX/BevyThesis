@@ -3895,6 +3895,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_obj",
+ "camera_plugin",
 ]
 
 [[package]]
@@ -3903,6 +3904,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_obj",
+ "camera_plugin",
 ]
 
 [[package]]

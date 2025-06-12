@@ -133,10 +133,7 @@ impl Plugin for PostProcessPlugin {
         render_app.add_systems(ExtractSchedule, check_event);
 
         render_app
-            .add_render_graph_node::<ViewNodeRunner<PostProcessNode>>(
-                Core3d,
-                PostProcessLabel,
-            )
+            .add_render_graph_node::<ViewNodeRunner<PostProcessNode>>(Core3d, PostProcessLabel)
             .add_render_graph_edges(
                 Core3d,
                 (
@@ -189,10 +186,7 @@ impl ViewNode for PostProcessNode {
         let bind_group = render_context.render_device().create_bind_group(
             "post_process_bind_group",
             &pipeline_def.layout,
-            &BindGroupEntries::sequential((
-                post_process.source,
-                &pipeline_def.sampler,
-            )),
+            &BindGroupEntries::sequential((post_process.source, &pipeline_def.sampler)),
         );
 
         // Rrender pass
@@ -271,28 +265,29 @@ impl PostProcessPipeline {
         let sampler = render_device.create_sampler(&SamplerDescriptor::default());
         let shader = world.load_asset(shader);
 
-        let pipeline_id = world
-            .resource_mut::<PipelineCache>()
-            .queue_render_pipeline(RenderPipelineDescriptor {
-                label: Some("post_process_pipeline".into()),
-                layout: vec![layout.clone()],
-                vertex: fullscreen_shader_vertex_state(),
-                fragment: Some(FragmentState {
-                    shader,
-                    shader_defs: vec![],
-                    entry_point: "fragment".into(),
-                    targets: vec![Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
-                        blend: None,
-                        write_mask: ColorWrites::ALL,
-                    })],
-                }),
-                primitive: PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: MultisampleState::default(),
-                push_constant_ranges: vec![],
-                zero_initialize_workgroup_memory: false,
-            });
+        let pipeline_id =
+            world
+                .resource_mut::<PipelineCache>()
+                .queue_render_pipeline(RenderPipelineDescriptor {
+                    label: Some("post_process_pipeline".into()),
+                    layout: vec![layout.clone()],
+                    vertex: fullscreen_shader_vertex_state(),
+                    fragment: Some(FragmentState {
+                        shader,
+                        shader_defs: vec![],
+                        entry_point: "fragment".into(),
+                        targets: vec![Some(ColorTargetState {
+                            format: TextureFormat::bevy_default(),
+                            blend: None,
+                            write_mask: ColorWrites::ALL,
+                        })],
+                    }),
+                    primitive: PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: MultisampleState::default(),
+                    push_constant_ranges: vec![],
+                    zero_initialize_workgroup_memory: false,
+                });
 
         PipelineDef {
             layout,

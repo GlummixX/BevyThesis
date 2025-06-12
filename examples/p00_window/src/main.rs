@@ -1,6 +1,5 @@
 use bevy::{
-    prelude::*,
-    window::{PresentMode, WindowMode, WindowResolution},
+    input::mouse::MouseMotion, prelude::*, window::{PresentMode, PrimaryWindow, WindowMode, WindowResolution}
 };
 
 fn main() {
@@ -18,5 +17,30 @@ fn main() {
         primary_window: Some(window_settings),
         ..default()
     }));
+    app.add_systems(Update, handle_io);
+    app.init_resource::<WinState>();
     app.run();
+}
+
+#[derive(Default, Resource)]
+struct WinState(bool);
+
+fn handle_io(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut mouse: EventReader<MouseMotion>,
+    mut state: ResMut<WinState>,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+){
+    if let Ok(mut window) = primary_window.get_single_mut() {
+        if keyboard.just_pressed(KeyCode::KeyZ){
+            state.0 = !state.0;
+            window.set_maximized(state.0);
+        }
+        if keyboard.just_pressed(KeyCode::KeyX){
+            window.set_minimized(true);
+        }
+    }
+    for ev in mouse.read() {
+
+    } 
 }

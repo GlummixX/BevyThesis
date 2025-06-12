@@ -1,10 +1,15 @@
 use bevy::{
-    core_pipeline::core_2d::graph::{Core2d, Node2d}, ecs::query::QueryItem, prelude::*, render::{
+    core_pipeline::core_2d::graph::{Core2d, Node2d},
+    ecs::query::QueryItem,
+    prelude::*,
+    render::{
         camera::{ClearColor, ScalingMode, Viewport},
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         mesh::VertexBufferLayout,
         render_asset::RenderAssets,
-        render_graph::{GraphInput, Node, RenderGraph, RenderGraphApp, RenderLabel, ViewNode, ViewNodeRunner},
+        render_graph::{
+            GraphInput, Node, RenderGraph, RenderGraphApp, RenderLabel, ViewNode, ViewNodeRunner,
+        },
         render_resource::{
             AsBindGroup, AsBindGroupError, BindGroup, BindGroupLayout, BindGroupLayoutEntry,
             BindingType, BlendState, CachedComputePipelineId, CachedRenderPipelineId,
@@ -20,7 +25,8 @@ use bevy::{
         texture::{FallbackImage, GpuImage},
         view::ViewTarget,
         Render, RenderApp, RenderPlugin, RenderSet,
-    }, DefaultPlugins
+    },
+    DefaultPlugins,
 };
 
 use std::borrow::Cow;
@@ -28,21 +34,6 @@ use std::borrow::Cow;
 const PARTICLE_COUNT: usize = 100_000;
 const SHADER_PATH_COMPUTE: &str = "compute.wgsl";
 const SHADER_PATH_VERTEX: &str = "render.wgsl";
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderType)]
-struct VertexData {
-    pos: [f32; 2],
-    vel: [f32; 2],
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderType)]
-struct PushConstants {
-    attr: [f32; 2],
-    attr_strength: f32,
-    delta_t: f32,
-}
 
 fn main() {
     let render_plugin = RenderPlugin {
@@ -91,6 +82,21 @@ fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) 
     ));
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderType)]
+struct VertexData {
+    pos: [f32; 2],
+    vel: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderType)]
+struct PushConstants {
+    attr: [f32; 2],
+    attr_strength: f32,
+    delta_t: f32,
+}
+
 #[derive(RenderLabel, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct ComputeNodeLabel;
 
@@ -119,7 +125,14 @@ impl Plugin for ComputePlugin {
             .add_render_graph_node::<ComputeNode>(Core2d, ComputeNodeLabel)
             .add_render_graph_node::<ViewNodeRunner<RenderNode>>(Core2d, RenderNodeLabel);
 
-        render_app.add_render_graph_edges(Core2d, (ComputeNodeLabel, RenderNodeLabel, Node2d::EndMainPassPostProcessing));
+        render_app.add_render_graph_edges(
+            Core2d,
+            (
+                ComputeNodeLabel,
+                RenderNodeLabel,
+                Node2d::EndMainPassPostProcessing,
+            ),
+        );
     }
 
     fn finish(&self, app: &mut App) {
@@ -130,7 +143,6 @@ impl Plugin for ComputePlugin {
         render_app
             .init_resource::<ComputePipeline>()
             .init_resource::<RenderPipeline>();
-
     }
 }
 
@@ -361,7 +373,7 @@ impl FromWorld for RenderPipeline {
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::PointList,
                 strip_index_format: None,
-                front_face: FrontFace::Ccw, 
+                front_face: FrontFace::Ccw,
                 cull_mode: None,
                 unclipped_depth: false,
                 polygon_mode: PolygonMode::Point,
@@ -437,18 +449,17 @@ impl ViewNode for RenderNode {
             pipeline_cache.get_render_pipeline(render_pipeline.pipeline),
             self.view_target_id,
         ) {
-            let mut render_pass =
-                render_context.begin_tracked_render_pass(RenderPassDescriptor {
-                        label: Some("Render Pass"),
-                        color_attachments: &[Some(RenderPassColorAttachment {
-                            view: &view_target.main_texture_view(),
-                            resolve_target: None,
-                            ops: Operations::default(),
-                        })],
-                        depth_stencil_attachment: None,
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                    });
+            let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &view_target.main_texture_view(),
+                    resolve_target: None,
+                    ops: Operations::default(),
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
 
             render_pass.set_render_pipeline(pipeline);
             render_pass.set_bind_group(0, &render_bind_group.0, &[]);
@@ -458,4 +469,3 @@ impl ViewNode for RenderNode {
         Ok(())
     }
 }
-

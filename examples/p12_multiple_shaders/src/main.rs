@@ -2,9 +2,7 @@ use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
     render::{
-        render_resource::{
-            AsBindGroup, ShaderRef
-        },
+        render_resource::{AsBindGroup, ShaderRef},
         settings::{Backends, RenderCreation, WgpuSettings},
         RenderPlugin,
     },
@@ -14,6 +12,80 @@ use bevy::{
 const SHADER_A: &str = "a.wgsl";
 const SHADER_B: &str = "b.wgsl";
 const SHADER_C: &str = "c.wgsl";
+
+fn main() {
+    // Set the window properties
+    let window_settings = Window {
+        resolution: WindowResolution::new(800.0, 600.0),
+        title: "P12 Multiple shaders".to_string(),
+        mode: WindowMode::Windowed,
+        present_mode: PresentMode::AutoVsync,
+        ..default()
+    };
+    let window_plugin = WindowPlugin {
+        primary_window: Some(window_settings),
+        ..default()
+    };
+    // Set the rendering backend
+    let render_plugin = RenderPlugin {
+        render_creation: RenderCreation::Automatic(WgpuSettings {
+            backends: Some(Backends::VULKAN),
+            ..default()
+        }),
+        ..default()
+    };
+    // Create the app
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(window_plugin).set(render_plugin));
+    app.add_plugins((
+        Material2dPlugin::<ShaderAMat>::default(),
+        Material2dPlugin::<ShaderBMat>::default(),
+        Material2dPlugin::<ShaderCMat>::default(),
+    ));
+    app.add_systems(Startup, setup);
+    app.add_systems(Update, time_system);
+    app.run();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut shader_a: ResMut<Assets<ShaderAMat>>,
+    mut shader_b: ResMut<Assets<ShaderBMat>>,
+    mut shader_c: ResMut<Assets<ShaderCMat>>,
+) {
+    // Create a 2D camera with orthographic projection
+    let mut proj = OrthographicProjection::default_2d();
+    proj.scale = 0.01;
+    commands.spawn((Camera2d, proj));
+
+    // Init shader materials
+    let material_a = shader_a.add(ShaderAMat::default());
+    let material_b = shader_b.add(ShaderBMat::default());
+    let material_c = shader_c.add(ShaderCMat::default());
+
+    // Create colored triangle mesh
+    let mesh = create_colored_triangle();
+
+    // Spawn the triangles
+    commands.spawn((
+        Mesh2d(meshes.add(mesh.clone())),
+        MeshMaterial2d(material_a),
+        Transform::from_translation(Vec3::new(-2.0, -0.5, 0.)),
+    ));
+
+    commands.spawn((
+        Mesh2d(meshes.add(mesh.clone())),
+        MeshMaterial2d(material_b),
+        Transform::from_translation(Vec3::new(-0.5, -0.5, 0.)),
+    ));
+
+    commands.spawn((
+        Mesh2d(meshes.add(mesh)),
+        MeshMaterial2d(material_c),
+        Transform::from_translation(Vec3::new(1., -0.5, 0.)),
+    ));
+}
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone, Default)]
 struct ShaderAMat {
@@ -85,46 +157,6 @@ fn create_colored_triangle() -> Mesh {
     mesh
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut shader_a: ResMut<Assets<ShaderAMat>>,
-    mut shader_b: ResMut<Assets<ShaderBMat>>,
-    mut shader_c: ResMut<Assets<ShaderCMat>>,
-) {
-    // Create a 2D camera with orthographic projection
-    let mut proj = OrthographicProjection::default_2d();
-    proj.scale = 0.01;
-    commands.spawn((Camera2d, proj));
-
-    // Init shader materials
-    let material_a = shader_a.add(ShaderAMat::default());
-    let material_b = shader_b.add(ShaderBMat::default());
-    let material_c = shader_c.add(ShaderCMat::default());
-
-    // Create colored triangle mesh
-    let mesh = create_colored_triangle();
-
-    // Spawn the triangles
-    commands.spawn((
-        Mesh2d(meshes.add(mesh.clone())),
-        MeshMaterial2d(material_a),
-        Transform::from_translation(Vec3::new(-2.0, -0.5, 0.)),
-    ));
-
-    commands.spawn((
-        Mesh2d(meshes.add(mesh.clone())),
-        MeshMaterial2d(material_b),
-        Transform::from_translation(Vec3::new(-0.5, -0.5, 0.)),
-    ));
-
-    commands.spawn((
-        Mesh2d(meshes.add(mesh)),
-        MeshMaterial2d(material_c),
-        Transform::from_translation(Vec3::new(1., -0.5, 0.)),
-    ));
-}
-
 fn time_system(
     time: Res<Time>,
     mut material_a: ResMut<Assets<ShaderAMat>>,
@@ -140,38 +172,4 @@ fn time_system(
     if let Some((_, material)) = material_c.iter_mut().next() {
         material.time = time.elapsed_secs();
     };
-}
-
-fn main() {
-    // Set the window properties
-    let window_settings = Window {
-        resolution: WindowResolution::new(800.0, 600.0),
-        title: "P12 Multiple shaders".to_string(),
-        mode: WindowMode::Windowed,
-        present_mode: PresentMode::AutoVsync,
-        ..default()
-    };
-    let window_plugin = WindowPlugin {
-        primary_window: Some(window_settings),
-        ..default()
-    };
-    // Set the rendering backend
-    let render_plugin = RenderPlugin {
-        render_creation: RenderCreation::Automatic(WgpuSettings {
-            backends: Some(Backends::VULKAN),
-            ..default()
-        }),
-        ..default()
-    };
-    // Create the app
-    let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(window_plugin).set(render_plugin));
-    app.add_plugins((
-        Material2dPlugin::<ShaderAMat>::default(),
-        Material2dPlugin::<ShaderBMat>::default(),
-        Material2dPlugin::<ShaderCMat>::default(),
-    ));
-    app.add_systems(Startup, setup);
-    app.add_systems(Update, time_system);
-    app.run();
 }

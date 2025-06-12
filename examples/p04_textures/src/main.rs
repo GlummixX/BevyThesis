@@ -1,11 +1,10 @@
-use bevy::{prelude::*, render::{
+use bevy::{
+    prelude::*,
+    render::{
         settings::{Backends, RenderCreation, WgpuSettings},
         RenderPlugin,
-    }
+    },
 };
-
-#[derive(Component)]
-struct Rotate{}
 
 fn main() {
     let render_plugin = RenderPlugin {
@@ -20,13 +19,6 @@ fn main() {
     app.add_systems(Startup, setup);
     app.add_systems(Update, rotate_system);
     app.run();
-
-}
-
-fn rotate_system(mut query: Query<&mut Transform, With<Rotate>>){
-    for mut transform in query.iter_mut(){
-        transform.rotate_local_y(0.1);
-    }
 }
 
 /// set up a simple 3D scene
@@ -64,4 +56,13 @@ fn setup(
         MeshMaterial3d(material),
         Transform::from_xyz(0., 0., 0.),
     ));
+}
+
+#[derive(Component)]
+struct Rotate {}
+
+fn rotate_system(mut query: Query<&mut Transform, With<Rotate>>) {
+    for mut transform in query.iter_mut() {
+        transform.rotate_local_y(0.1);
+    }
 }
