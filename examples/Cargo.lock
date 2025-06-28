@@ -384,6 +384,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "b03_performance_test"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
