@@ -1,13 +1,9 @@
 use std::time::Instant;
 
 use bevy::{
-    diagnostic::FrameTimeDiagnosticsPlugin,
-    prelude::*,
-    render::{
-        settings::{Backends, RenderCreation, WgpuSettings},
-        RenderPlugin,
-    },
-    window::{PresentMode, WindowMode, WindowResolution},
+    diagnostic::FrameTimeDiagnosticsPlugin, ecs::schedule::ExecutorKind, prelude::*, render::{
+        pipelined_rendering::PipelinedRenderingPlugin, settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin
+    }, window::{PresentMode, WindowMode, WindowResolution}
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
@@ -83,8 +79,12 @@ fn main() {
         }),
         ..default()
     };
+    let mut default_plugins = DefaultPlugins.set(render_plugin).set(window_plugin);
+    if args[2].as_str() == "np"{
+        default_plugins = default_plugins.build().disable::<PipelinedRenderingPlugin>();
+    }
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(render_plugin).set(window_plugin));
+    app.add_plugins(default_plugins);
     app.add_plugins(FrameTimeDiagnosticsPlugin::default());
     app.insert_resource(BenchmarkData::default());
     app.add_systems(Update, perf_system);
