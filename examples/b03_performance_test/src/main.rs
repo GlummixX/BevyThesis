@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use bevy::{
-    diagnostic::FrameTimeDiagnosticsPlugin, ecs::schedule::ExecutorKind, prelude::*, render::{
+    diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::{
         pipelined_rendering::PipelinedRenderingPlugin, settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin
     }, window::{PresentMode, WindowMode, WindowResolution}
 };
@@ -31,13 +31,14 @@ impl BenchmarkData {
             self.start = Instant::now();
         }
         self.data.push(frametime);
-        Instant::now().duration_since(self.start).as_secs_f32() > 30.
+        Instant::now().duration_since(self.start).as_secs_f32() > 30.0
     }
     fn get_data(&mut self) -> Vec<f32> {
+        self.data.remove(0);
         self.data.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let maximum = self.data.get(0).unwrap();
-        let minimum = self.data.get(self.data.len()).unwrap();
-        let median = self.data.get(self.data.len() / 2).unwrap();
+        let minimum = self.data.get(0).unwrap();
+        let maximum = self.data.get(self.data.len()-1).unwrap();
+        let median = self.data.get((self.data.len() / 2)-1).unwrap();
         let pct95 = self
             .data
             .get((self.data.len() as f32 * 0.95) as usize)
@@ -82,8 +83,11 @@ fn main() {
         ..default()
     };
     let mut default_plugins = DefaultPlugins.set(render_plugin).set(window_plugin);
-    if args[2].as_str() == "np"{
-        default_plugins = default_plugins.build().disable::<PipelinedRenderingPlugin>();
+    if let Some(x) = args.get(2) {
+        if x.as_str() == "np"{
+            default_plugins = default_plugins.build().disable::<PipelinedRenderingPlugin>();
+        }
+        
     }
     let mut app = App::new();
     app.add_plugins(default_plugins);
@@ -113,18 +117,29 @@ fn setup(
     ));
     let mut rng = StdRng::seed_from_u64(42);
     let shapes = vec![
-        meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
-        meshes.add(Sphere::new(0.5)),
-        meshes.add(Torus::new(0.25, 0.5)),
+        meshes.add(Cuboid::new(0.5, 0.5, 0.5)),
+        meshes.add(Sphere::new(0.25)),
+        meshes.add(Torus::new(0.125, 0.25)),
     ];
 
-    for _ in 0..100 {
-        let shape_index = rng.gen_range(0..shapes.len());
-        let color = Color::linear_rgb(
-            rng.gen_range(0.0..=1.0),
-            rng.gen_range(0.0..=1.0),
-            rng.gen_range(0.0..=1.0),
+    let mut colors = vec![];
+    for _ in 0..32{
+        colors.push(
+            materials.add(StandardMaterial {
+                base_color: Color::linear_rgb(
+                    rng.gen_range(0.0..=1.0),
+                    rng.gen_range(0.0..=1.0),
+                    rng.gen_range(0.0..=1.0),
+                ),
+                perceptual_roughness: 0.5,
+                ..default()
+            })
         );
+    }
+
+    for _ in 0..5000 {
+        let shape_index = rng.gen_range(0..shapes.len());
+        let color_index = rng.gen_range(0..colors.len());
         let position = Vec3::new(
             rng.gen_range(-7.5..7.5),
             rng.gen_range(-7.5..7.5),
@@ -132,11 +147,7 @@ fn setup(
         );
 
         let mesh_handle = shapes[shape_index].clone();
-        let material_handle = materials.add(StandardMaterial {
-            base_color: color,
-            perceptual_roughness: 0.5,
-            ..default()
-        });
+        let material_handle = colors[color_index].clone();
 
         commands.spawn((
             Mesh3d(mesh_handle),
