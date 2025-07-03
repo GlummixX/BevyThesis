@@ -35,6 +35,8 @@ impl BenchmarkData {
     }
     fn get_data(&mut self) -> Vec<f32> {
         self.data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let maximum = self.data.get(0).unwrap();
+        let minimum = self.data.get(self.data.len()).unwrap();
         let median = self.data.get(self.data.len() / 2).unwrap();
         let pct95 = self
             .data
@@ -45,7 +47,7 @@ impl BenchmarkData {
             .get((self.data.len() as f32 * 0.05) as usize)
             .unwrap();
         let avg = self.data.iter().sum::<f32>() / self.data.len() as f32;
-        vec![*median, *pct5, *pct95, avg]
+        vec![*maximum, *minimum, *median, *pct5, *pct95, avg]
     }
 }
 
