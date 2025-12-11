@@ -1,5 +1,5 @@
 use bevy::{
-    input::mouse::MouseMotion, prelude::*, window::{PresentMode, PrimaryWindow, WindowMode, WindowResolution}
+    prelude::*, window::{PresentMode, PrimaryWindow, WindowMode, WindowResolution}
 };
 
 fn main() {
@@ -27,7 +27,6 @@ struct WinState(bool);
 
 fn handle_io(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut mouse: EventReader<MouseMotion>,
     mut state: ResMut<WinState>,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
 ){
@@ -40,7 +39,4 @@ fn handle_io(
             window.set_minimized(true);
         }
     }
-    for ev in mouse.read() {
-
-    } 
 }
