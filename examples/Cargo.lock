@@ -3891,6 +3891,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "p04b_textures"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "p05_camera"
 version = "0.1.0"
 dependencies = [

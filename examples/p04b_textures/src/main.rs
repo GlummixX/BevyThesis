@@ -1,10 +1,24 @@
 use bevy::{
     prelude::*,
     render::{
-        settings::{Backends, RenderCreation, WgpuSettings},
-        RenderPlugin,
+        render_resource::{AsBindGroup, ShaderRef}, settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin
     },
 };
+
+const SHADER_PATH: &str = "shader.wgsl";
+
+#[derive(Asset, TypePath, AsBindGroup, Clone)]
+pub struct TexturedMaterial {
+    #[texture(0)]
+    #[sampler(1)]
+    pub texture: Handle<Image>,
+}
+
+impl Material for TexturedMaterial {
+    fn fragment_shader() -> ShaderRef {
+        SHADER_PATH.into()
+    }
+}
 
 fn main() {
     let render_plugin = RenderPlugin {
@@ -16,6 +30,7 @@ fn main() {
     };
     let mut app = App::new();
     app.add_plugins(DefaultPlugins.set(render_plugin));
+    app.add_plugins(MaterialPlugin::<TexturedMaterial>::default());
     app.add_systems(Startup, setup);
     app.add_systems(Update, rotate_system);
     app.run();
@@ -25,32 +40,19 @@ fn main() {
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<TexturedMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
     // Create camera
     commands.spawn((Camera3d::default(), Transform::from_xyz(0., 1., 20.)));
-    // Create light
-    commands.spawn((
-        PointLight {
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(0., 1., 10.0),
-    ));
-
+    
     // Load texture
     let texture_handle = asset_server.load("earth.png");
 
-    // Assign the texture to the material
-    let material = materials.add(StandardMaterial {
-        base_color_texture: Some(texture_handle),
-        reflectance: 0.3,
-        perceptual_roughness: 0.8,
-        ..Default::default()
-    });
+    // Setup the material 
+    let material = materials.add(TexturedMaterial{texture:texture_handle});
 
-    // Sphere
+    // Spawn Sphere
     commands.spawn((
         Mesh3d(meshes.add(Sphere::new(5.))),
         MeshMaterial3d(material),

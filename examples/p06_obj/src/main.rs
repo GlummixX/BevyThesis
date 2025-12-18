@@ -1,11 +1,9 @@
 use bevy::{
-    input::mouse::MouseMotion,
     prelude::*,
     render::{
         settings::{Backends, RenderCreation, WgpuSettings},
         RenderPlugin,
-    },
-    window::PrimaryWindow,
+    }
 };
 use bevy_obj::ObjPlugin;
 use camera_plugin;
