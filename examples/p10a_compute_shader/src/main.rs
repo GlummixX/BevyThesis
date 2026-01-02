@@ -86,18 +86,20 @@ fn setup(mut commands: Commands, mut buff: ResMut<Assets<ShaderStorageBuffer>>) 
 #[derive(RenderLabel, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct ComputeNode;
 
-pub struct ComputePlugin;
+pub struct ComputePlugin; //Custom compute plugin
 
 impl Plugin for ComputePlugin {
     fn build(&self, _app: &mut App) {}
 
     fn finish(&self, app: &mut App) {
+        // This function is called when the app is finished initializing this plugin.
         if let Some(app) = app.get_sub_app_mut(RenderApp) {
-            app.init_resource::<ComputePipeline>();
-            app.add_systems(Render, prepare_buffers.in_set(RenderSet::Prepare));
+            app.init_resource::<ComputePipeline>(); //Custom compute pipeline
+            app.add_systems(Render, prepare_buffers.in_set(RenderSet::Prepare)); //Prepare buffers in the prep stage of Render pass
 
             let mut render_graph = app.world_mut().get_resource_mut::<RenderGraph>().unwrap();
 
+            //Add and connect custom compute node to the render graph
             render_graph.add_node(ComputeNode, DispatchCompute {});
             let r = render_graph.try_add_node_edge(GraphInput, ComputeNode);
             if r.is_err() {
@@ -202,6 +204,7 @@ impl FromWorld for ComputePipeline {
     }
 }
 
+//Render graph node, that handles the compute pass
 pub struct DispatchCompute;
 
 impl Node for DispatchCompute {
