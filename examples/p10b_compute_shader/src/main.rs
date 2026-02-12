@@ -463,7 +463,7 @@ impl ViewNode for RenderNode {
 
             render_pass.set_render_pipeline(pipeline);
             render_pass.set_bind_group(0, &render_bind_group.0, &[]);
-            render_pass.draw(0..PARTICLE_COUNT as u32, 0..10);
+            render_pass.draw(0..PARTICLE_COUNT as u32, 0..1);
         }
 
         Ok(())

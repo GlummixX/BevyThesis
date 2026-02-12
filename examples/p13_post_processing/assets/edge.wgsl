@@ -38,5 +38,5 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
     let edge_intensity: f32 = length(color_x + color_y);
     let edge: f32 = select(0.0, 1.0, edge_intensity > edge_threshold);
-    return vec4<f32>(vec3<f32>(edge), 1.0);
+    return vec4<f32>(1.0 - vec3<f32>(edge), 1.0);
 }
