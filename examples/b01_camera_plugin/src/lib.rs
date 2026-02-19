@@ -41,7 +41,7 @@ fn camera_controller_system(
                 input.y += time.delta_secs();
             }
             if keyboard.pressed(KeyCode::KeyC) {
-                input.y += time.delta_secs();
+                input.y -= time.delta_secs();
             }
             if input != Vec3::ZERO {
                 let by = transform.rotation * input * 5.;
